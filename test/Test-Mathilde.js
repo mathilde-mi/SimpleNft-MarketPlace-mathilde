@@ -5,15 +5,18 @@ const Helper = require('./shared');
 
 describe('SimpleNftMarketplace', function () {
   let Contract, token;
-  let owner, lucie, seller, moderator, admin, nonAdmin, treasury, nonTreasury, nonModerator, account;
+  let owner, lucie, seller, moderator, admin, nonAdmin, treasury, nonTreasury, nonModerator, account, Luc;
   let listingId;
 
   beforeEach(async function () {
-    [owner, lucie, seller, moderator, nonModerator, admin, nonAdmin, treasury, nonTreasury, account] = await ethers.getSigners();
+    [owner, lucie, seller, moderator, nonModerator, admin, nonAdmin, treasury, nonTreasury, account, Luc] = await ethers.getSigners();
     const Contract = await ethers.getContractFactory('SimpleNftMarketplace');
     contract = await Contract.deploy();
     await contract.deployed();
     await contract.initialize(lucie.address);
+
+    const adminRole = contract.DEFAULT_ADMIN_ROLE();
+    await contract.grantRole(adminRole, Luc.address);
   });
 
   describe('Controlable.sol', function () {
@@ -127,6 +130,9 @@ describe('SimpleNftMarketplace', function () {
   });
 
   describe('ListingManager.sol', function () {
+    //function onERC721Received(address, address, uint256, bytes memory) public virtual override returns (bytes4) {
+    it('', async function () {});
+
     // function getListingDetail(uint256 listingId) public view returns (Listing memory)
     it('', async function () {});
 
@@ -203,9 +209,36 @@ describe('SimpleNftMarketplace', function () {
     // it("", async function () {
     // });
 
-    // // function changeTransactionFee(uint32 newTransactionFee) external onlyAdmin returns (bool success)
-    // it("", async function () {
-    // });
+    it('Should change the transaction Fee', async function () {
+      const initialTransactionFee = await contract.transactionFee();
+      expect(initialTransactionFee).to.equal(0);
+
+      const expectedTransactionFee = 1000;
+      const setTransactionFee = await contract.connect(Luc).changeTransactionFee(1000);
+      const actualTransactionFee = await contract.transactionFee();
+      expect(actualTransactionFee).to.equal(expectedTransactionFee);
+    });
+    it('Should only be callable by an admin', async function () {
+      await expect(contract.connect(nonAdmin).changeTransactionFee(25)).to.be.revertedWith(Helper.errors.CALLER_NOT_ADMIN);
+    });
+    it('Should emit the event TransactionFeeChanged when change', async function () {
+      const oldFee = 0;
+      const newFee = 50;
+      const finalFee = await contract.connect(Luc).changeTransactionFee(newFee);
+      expect(finalFee).to.emit(contract, 'TransactionFeeChanged').withArgs(oldFee, newFee);
+    });
+    it('Should emit the correct fee in the event TransactionFeeChanged', async function () {
+      const transactionFee = await contract.transactionFee();
+      const newTransactionFee = 500;
+      const TransactionFee = await contract.changeTransactionFee(newTransactionFee);
+      const event = await new Promise((resolve) => {
+        contract.on('TransactionFeeChanged', (oldFee, newFee) => {
+          resolve({ oldFee, newFee });
+        });
+      });
+      expect(event.oldFee).to.equal(transactionFee);
+      expect(event.newFee).to.equal(newTransactionFee);
+    });
 
     // // function withdrawTransactionFee() external onlyTreasury returns (bool success)
     // it("", async function () {
