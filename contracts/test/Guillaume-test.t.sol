@@ -3,10 +3,11 @@ pragma solidity ^0.8.9;
 
 import 'foundry-test-utility/contracts/utils/console.sol';
 import '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
+import { AccessControlUpgradeable } from '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import { Helper } from './shared/helper.t.sol';
 import { Errors } from './shared/errors.t.sol';
 
-contract SimpleNftMarketplace_test is Helper {
+contract SimpleNftMarketplace_test_guillaume_test is Helper {
   uint8 LOG_LEVEL = 0;
 
   function setUp() public {
@@ -31,6 +32,12 @@ contract SimpleNftMarketplace_test is Helper {
 
   function test_SimpleNftMarketplace_basic_changeToken() public {
     helper_changeToken(ADMIN, IERC20Upgradeable(address(token)));
+  }
+
+  function test_SimpleNftMarketplace_basic_changeToken_notAdmin() public {
+    IERC20Upgradeable newToken = IERC20Upgradeable(address(0x123));
+    Errors.RevertStatus expectedError = Errors.RevertStatus.CallerNotAdmin;
+    helper_changeToken(address(2), newToken, expectedError);
   }
 
   function test_SimpleNftMarketplace_basic_createListing() public {
@@ -74,6 +81,28 @@ contract SimpleNftMarketplace_test is Helper {
 
     help_moveBlockAndTimeFoward(1, 100);
 
-    helper_buyListing(address(2), 0, RevertStatus.Erc20InsufficientAllowance);
+    helper_buyListing(address(2), 0, RevertStatus.Erc20InsuffocoemtAllowance);
+  }
+
+  // je ne suis pas sûr de cette fonction
+  function test_SimpleNftMarketplace_basic_checkValidAddress() public pure {
+    // Adresse valide
+    address adresseValide = 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2;
+    assert(adresseValide != address(0));
+  }
+
+  function test_SimpleNftMarketplace_basic_blacklistUser() public {
+    helper_blacklistUser(MODERATOR, USER, true); // ajouter USER à la liste noire
+  }
+
+  function test_SimpleNftMarketplace_basic_blacklistUser_admin() public {
+    helper_blacklistUser(ADMIN, address(1), true);
+    assertTrue(marketplace.isBlacklistedUser(address(1)));
+  }
+
+  function test_SimpleNftMarketplace_basic_blacklistUser_moderator() public {
+    verify_revertCall(RevertStatus.CallerNotModerator);
+    helper_blacklistUser(address(2), address(1), true);
+    assertTrue(!marketplace.isBlacklistedUser(address(1)));
   }
 }
