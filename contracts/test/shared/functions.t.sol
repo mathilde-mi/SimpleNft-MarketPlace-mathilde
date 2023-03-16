@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import 'foundry-test-utility/contracts/utils/console.sol';
 import { CheatCodes } from 'foundry-test-utility/contracts/utils/cheatcodes.sol';
+import { Signatures } from 'foundry-test-utility/contracts/shared/signatures.sol';
 import '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
 import { Constants } from './constants.t.sol';
 import { Errors } from './errors.t.sol';
@@ -24,7 +25,7 @@ interface IERC20 {
   function approve(address to, uint256 amount) external;
 }
 
-contract Functions is Constants, Errors, TestStorage {
+contract Functions is Constants, Errors, TestStorage, Signatures {
   SimpleNftMarketplace public marketplace;
 
   MockERC20 public token;
@@ -187,10 +188,31 @@ contract Functions is Constants, Errors, TestStorage {
     token.approve(address(marketplace), amount);
   }
 
+  function helper_blacklist_user(address sender, address userAddress, bool set, RevertStatus revertType) public {
+    if (revertType == RevertStatus.Success) assertTrue(!marketplace.isBlacklistedUser(userAddress));
 
+    verify_revertCall(revertType);
+    vm.prank(sender);
+    marketplace.blacklistUser(userAddress, set);
 
-  function helper_blacklistUser(address sender, address userAddress, bool set) public {
-  vm.prank(sender);
-  marketplace.blacklistUser(userAddress, set);
+    if (revertType == RevertStatus.Success) assertTrue(marketplace.isBlacklistedUser(userAddress));
+  }
+
+  function helper_blacklist_user(address sender, address userAddress, bool set) public {
+    helper_blacklist_user(sender, userAddress, set, RevertStatus.Success);
+  }
+
+  function helper_blacklist_token(address sender, address contractAddress, uint256 tokenId, bool set, RevertStatus revertType) public {
+    if (revertType == RevertStatus.Success) assertTrue(!marketplace.isBlacklistedToken(contractAddress, tokenId));
+
+    verify_revertCall(revertType);
+    vm.prank(sender);
+    marketplace.blacklistToken(contractAddress, tokenId, set);
+
+    if (revertType == RevertStatus.Success) assertTrue(marketplace.isBlacklistedToken(contractAddress, tokenId));
+  }
+
+  function helper_blacklist_token(address sender, address contractAddress, uint256 tokenId, bool set) public {
+    helper_blacklist_token(sender, contractAddress, tokenId, set, RevertStatus.Success);
   }
 }
